@@ -1,26 +1,30 @@
-name: Publish macOS Dev Build
+name: Publish Fork macOS Build
 
 on:
   push:
     branches:
-      - quick-terminal-tabs
+      - dev
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: dev-macos-${{ github.ref }}
+  group: fork-macos-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build-and-publish:
     name: Build, test, and publish Apple Silicon
+    if: github.repository == 'thongntit/ghostty' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main')
     runs-on: xcode-27
     timeout-minutes: 60
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Zig
         uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2.2.1
@@ -47,14 +51,31 @@ jobs:
             xcodebuild -downloadComponent MetalToolchain
           fi
 
+      - name: Select build configuration
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == main ]]; then
+            echo "BUILD_CONFIGURATION=ReleaseLocal" >> "$GITHUB_ENV"
+            echo "BUILD_OPTIMIZATION=ReleaseFast" >> "$GITHUB_ENV"
+            echo "APP_NAME=Ghostty Fork" >> "$GITHUB_ENV"
+            echo "ASSET=Ghostty-macos-arm64.zip" >> "$GITHUB_ENV"
+            echo "BUNDLE_ID=io.github.thongntit.ghostty" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_CONFIGURATION=Debug" >> "$GITHUB_ENV"
+            echo "BUILD_OPTIMIZATION=Debug" >> "$GITHUB_ENV"
+            echo "APP_NAME=Ghostty Dev" >> "$GITHUB_ENV"
+            echo "ASSET=Ghostty-Dev-macos-arm64.zip" >> "$GITHUB_ENV"
+            echo "BUNDLE_ID=com.mitchellh.ghostty.debug" >> "$GITHUB_ENV"
+          fi
+
       - name: Build Ghostty core
-        run: zig build -Demit-macos-app=false -Dxcframework-target=native
+        run: zig build -Demit-macos-app=false -Dxcframework-target=native -Doptimize="$BUILD_OPTIMIZATION"
 
       - name: Resolve Swift packages without Keychain prompts
         run: xcodebuild -resolvePackageDependencies -project macos/Ghostty.xcodeproj -scheme Ghostty -packageAuthorizationProvider netrc
 
       - name: Build macOS app
-        run: nu macos/build.nu --configuration Debug --action build
+        run: nu macos/build.nu --configuration "$BUILD_CONFIGURATION" --action build
 
       - name: Run macOS tests
         run: nu macos/build.nu --configuration Debug --action test
@@ -63,37 +84,48 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          app="macos/build/$BUILD_CONFIGURATION/Ghostty.app"
+          actual_id=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist")
+          test "$actual_id" = "$BUNDLE_ID"
+          test "$(lipo -archs "$app/Contents/MacOS/ghostty")" = arm64
+          codesign --verify --deep --strict "$app"
           mkdir -p dist/staging
-          ditto macos/build/Debug/Ghostty.app 'dist/staging/Ghostty Dev.app'
-          ditto -c -k --sequesterRsrc --keepParent 'dist/staging/Ghostty Dev.app' dist/Ghostty-Dev-macos-arm64.zip
-          (cd dist && shasum -a 256 Ghostty-Dev-macos-arm64.zip > SHA256SUMS)
+          ditto "$app" "dist/staging/$APP_NAME.app"
+          ditto -c -k --sequesterRsrc --keepParent "dist/staging/$APP_NAME.app" "dist/$ASSET"
+          (cd dist && shasum -a 256 "$ASSET" > SHA256SUMS)
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: Ghostty-Dev-macos-arm64
+          name: Ghostty-${{ github.ref_name }}-macos-arm64
           path: |
-            dist/Ghostty-Dev-macos-arm64.zip
+            dist/*.zip
             dist/SHA256SUMS
           if-no-files-found: error
 
-      - name: Publish development release
+      - name: Publish GitHub release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           short_sha="${GITHUB_SHA:0:12}"
-          tag="dev-${short_sha}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          flags=(--prerelease --latest=false)
+          tag_prefix=dev
+          if [[ "$GITHUB_REF_NAME" == main ]]; then
+            flags=(--latest)
+            tag_prefix=release
+          fi
+          tag="$tag_prefix-$short_sha-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           cat > "$RUNNER_TEMP/release-notes.md" <<NOTES
-          Development build for commit ${GITHUB_SHA}.
+          Ghostty fork build from ${GITHUB_REF_NAME} at commit ${GITHUB_SHA}.
 
           - macOS on Apple Silicon (arm64).
-          - Debug build with a separate bundle ID; this is not a notarized release.
-          - To open it for the first time, use Finder's Open action and follow macOS prompts if necessary.
+          - ${APP_NAME}.app uses its own bundle identifier and ad-hoc signing.
+          - This build has not been notarized by Apple.
           - CI run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
           NOTES
-          gh release create "$tag" dist/Ghostty-Dev-macos-arm64.zip dist/SHA256SUMS \
+          gh release create "$tag" "dist/$ASSET" dist/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
-            --title "Ghostty Dev ${short_sha}" --notes-file "$RUNNER_TEMP/release-notes.md" \
-            --prerelease
+            --title "$APP_NAME $short_sha" --notes-file "$RUNNER_TEMP/release-notes.md" \
+            "${flags[@]}"
