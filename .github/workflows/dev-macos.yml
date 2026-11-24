@@ -80,6 +80,12 @@ jobs:
       - name: Run macOS tests
         run: nu macos/build.nu --configuration Debug --action test
 
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: settings/go.mod
+          cache-dependency-path: settings/go.sum
+
       - name: Package app
         shell: bash
         run: |
@@ -91,6 +97,7 @@ jobs:
           codesign --verify --deep --strict "$app"
           mkdir -p dist/staging
           ditto "$app" "dist/staging/$APP_NAME.app"
+          sh macos/bundle-settings.sh "dist/staging/$APP_NAME.app"
           ditto -c -k --sequesterRsrc --keepParent "dist/staging/$APP_NAME.app" "dist/$ASSET"
           (cd dist && shasum -a 256 "$ASSET" > SHA256SUMS)
 

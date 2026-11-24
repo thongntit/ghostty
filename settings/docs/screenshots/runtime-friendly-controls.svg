@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1288" height="898" viewBox="0 0 1288 898" role="img" aria-labelledby="title desc">
+<title id="title">Ghostty Config TUI runtime capture: friendly numeric control</title>
+<desc id="desc">Actual terminal frame rendered from the running Ghostty Config TUI at 120 columns by 40 rows.</desc>
+<rect width="1288" height="898" fill="#09090f"/>
+<rect x="28" y="28" width="1232" height="842" rx="18" fill="#11111b" stroke="#313244" stroke-width="2"/>
+<rect x="28" y="28" width="1232" height="48" rx="18" fill="#1e1e2e"/>
+<rect x="28" y="54" width="1232" height="22" fill="#1e1e2e"/>
+<circle cx="59" cy="52" r="7" fill="#f38ba8"/><circle cx="83" cy="52" r="7" fill="#f9e2af"/><circle cx="107" cy="52" r="7" fill="#a6e3a1"/>
+<text x="644" y="57" text-anchor="middle" fill="#a6adc8" font-size="14" font-family="SFMono-Regular, Menlo, Monaco, Consolas, monospace">runtime capture · 120×40 PTY · friendly numeric control</text>
+<g xml:space="preserve" font-family="SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15">
+<text x="44" y="104" fill="rgb(245,194,231)" font-weight="700" opacity="0.68">Ghostty Config TUI</text>
+<text x="44" y="123" fill="rgb(166,173,200)">Guided editor · saves are confirmed explicitly</text>
+<text x="44" y="180" fill="#cdd6f4">╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="44" y="199" fill="#cdd6f4">│</text>
+<text x="44" y="218" fill="#cdd6f4">│  </text>
+<text x="74" y="218" fill="rgb(137,220,235)">Edit value</text>
+<text x="44" y="237" fill="#cdd6f4">│  </text>
+<text x="74" y="237" fill="rgb(203,166,247)" font-weight="700">Background Opacity</text>
+<text x="44" y="256" fill="#cdd6f4">│  </text>
+<text x="74" y="256" fill="rgb(166,173,200)">background-opacity</text>
+<text x="44" y="275" fill="#cdd6f4">│  </text>
+<text x="74" y="275" fill="rgb(166,173,200)">The opacity level (opposite of transparency) of the background.</text>
+<text x="44" y="294" fill="#cdd6f4">│  </text>
+<text x="74" y="294" fill="rgb(166,173,200)">Expected: finite number</text>
+<text x="44" y="313" fill="#cdd6f4">│</text>
+<text x="44" y="332" fill="#cdd6f4">│  </text>
+<text x="74" y="332" fill="#e5e5e5">background-opacity = </text>
+<text x="284" y="332" fill="#cdd6f4">0.9</text>
+<text x="44" y="351" fill="#cdd6f4">│  </text>
+<text x="74" y="351" fill="rgb(166,173,200)">←/→ adjust by 0.05 · ctrl+r raw numeric input</text>
+<text x="44" y="370" fill="#cdd6f4">│</text>
+<text x="44" y="389" fill="#cdd6f4">│  </text>
+<text x="74" y="389" fill="rgb(166,173,200)">enter stage · esc cancel</text>
+<text x="44" y="408" fill="#cdd6f4">│</text>
+<text x="44" y="427" fill="#cdd6f4">╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</text>
+<text x="44" y="465" fill="rgb(137,220,235)">Config: </text>
+<text x="124" y="465" fill="#cdd6f4">testdata/configs/editor-basic.ghostty</text>
+<text x="44" y="484" fill="rgb(166,173,200)">No staged changes</text>
+<text x="44" y="503" fill="rgb(166,173,200)">←/→ adjust by 0.05 · ctrl+r raw input · enter stage · esc cancel</text>
+</g></svg>

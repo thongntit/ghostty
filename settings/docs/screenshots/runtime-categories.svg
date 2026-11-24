@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1288" height="898" viewBox="0 0 1288 898" role="img" aria-labelledby="title desc">
+<title id="title">Ghostty Config TUI runtime capture: categories</title>
+<desc id="desc">Actual terminal frame rendered from the running Ghostty Config TUI at 120 columns by 40 rows.</desc>
+<rect width="1288" height="898" fill="#09090f"/>
+<rect x="28" y="28" width="1232" height="842" rx="18" fill="#11111b" stroke="#313244" stroke-width="2"/>
+<rect x="28" y="28" width="1232" height="48" rx="18" fill="#1e1e2e"/>
+<rect x="28" y="54" width="1232" height="22" fill="#1e1e2e"/>
+<circle cx="59" cy="52" r="7" fill="#f38ba8"/><circle cx="83" cy="52" r="7" fill="#f9e2af"/><circle cx="107" cy="52" r="7" fill="#a6e3a1"/>
+<text x="644" y="57" text-anchor="middle" fill="#a6adc8" font-size="14" font-family="SFMono-Regular, Menlo, Monaco, Consolas, monospace">runtime capture · 120×40 PTY · categories</text>
+<g xml:space="preserve" font-family="SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15">
+<text x="44" y="104" fill="rgb(245,194,231)" font-weight="700" opacity="0.68">Ghostty Config TUI</text>
+<text x="44" y="123" fill="rgb(166,173,200)">Guided editor · saves are confirmed explicitly</text>
+<text x="44" y="142" fill="rgb(166,173,200)">/ search all settings · enter/l open · c configured · a all</text>
+<text x="44" y="180" fill="#cdd6f4">╭────────────────────────────────────────────────────────────╮</text>
+<text x="44" y="199" fill="#cdd6f4">│                                                            │</text>
+<text x="44" y="218" fill="#cdd6f4">│  </text>
+<text x="74" y="218" fill="rgb(137,220,235)">Categories</text>
+<text x="174" y="218" fill="#cdd6f4">                                                │</text>
+<text x="44" y="237" fill="#cdd6f4">│  </text>
+<text x="74" y="237" fill="rgb(203,166,247)" font-weight="700">▸ </text>
+<text x="94" y="237" fill="#cdd6f4">Configured       </text>
+<text x="264" y="237" fill="rgb(166,173,200)">7 configured · 7 options</text>
+<text x="504" y="237" fill="#cdd6f4">               │</text>
+<text x="44" y="256" fill="#cdd6f4">│    All Settings     </text>
+<text x="264" y="256" fill="rgb(166,173,200)">7 configured · 208 options</text>
+<text x="524" y="256" fill="#cdd6f4">             │</text>
+<text x="44" y="275" fill="#cdd6f4">│    Application      </text>
+<text x="264" y="275" fill="rgb(166,173,200)">0 configured · 28 options</text>
+<text x="514" y="275" fill="#cdd6f4">              │</text>
+<text x="44" y="294" fill="#cdd6f4">│    Terminal         </text>
+<text x="264" y="294" fill="rgb(166,173,200)">0 configured · 14 options</text>
+<text x="514" y="294" fill="#cdd6f4">              │</text>
+<text x="44" y="313" fill="#cdd6f4">│    Shell            </text>
+<text x="264" y="313" fill="rgb(166,173,200)">0 configured · 7 options</text>
+<text x="504" y="313" fill="#cdd6f4">               │</text>
+<text x="44" y="332" fill="#cdd6f4">│    Clipboard        </text>
+<text x="264" y="332" fill="rgb(166,173,200)">0 configured · 10 options</text>
+<text x="514" y="332" fill="#cdd6f4">              │</text>
+<text x="44" y="351" fill="#cdd6f4">│    Window           </text>
+<text x="264" y="351" fill="rgb(166,173,200)">0 configured · 40 options</text>
+<text x="514" y="351" fill="#cdd6f4">              │</text>
+<text x="44" y="370" fill="#cdd6f4">│    Colors           </text>
+<text x="264" y="370" fill="rgb(166,173,200)">3 configured · 27 options</text>
+<text x="514" y="370" fill="#cdd6f4">              │</text>
+<text x="44" y="389" fill="#cdd6f4">│    Fonts            </text>
+<text x="264" y="389" fill="rgb(166,173,200)">2 configured · 34 options</text>
+<text x="514" y="389" fill="#cdd6f4">              │</text>
+<text x="44" y="408" fill="#cdd6f4">│    Keybindings      </text>
+<text x="264" y="408" fill="rgb(166,173,200)">1 configured · 3 options</text>
+<text x="504" y="408" fill="#cdd6f4">               │</text>
+<text x="44" y="427" fill="#cdd6f4">│    Mouse            </text>
+<text x="264" y="427" fill="rgb(166,173,200)">0 configured · 11 options</text>
+<text x="514" y="427" fill="#cdd6f4">              │</text>
+<text x="44" y="446" fill="#cdd6f4">│    GTK              </text>
+<text x="264" y="446" fill="rgb(166,173,200)">0 configured · 12 options</text>
+<text x="514" y="446" fill="#cdd6f4">              │</text>
+<text x="44" y="465" fill="#cdd6f4">│  </text>
+<text x="74" y="465" fill="rgb(166,173,200)">↓ more</text>
+<text x="134" y="465" fill="#cdd6f4">                                                    │</text>
+<text x="44" y="484" fill="#cdd6f4">│                                                            │</text>
+<text x="44" y="503" fill="#cdd6f4">│  </text>
+<text x="74" y="503" fill="rgb(166,173,200)">Settings explicitly present in the current config graph.</text>
+<text x="634" y="503" fill="#cdd6f4">  │</text>
+<text x="44" y="522" fill="#cdd6f4">│                                                            │</text>
+<text x="44" y="541" fill="#cdd6f4">╰────────────────────────────────────────────────────────────╯</text>
+<text x="44" y="579" fill="rgb(137,220,235)">Config: </text>
+<text x="124" y="579" fill="#cdd6f4">testdata/configs/editor-basic.ghostty</text>
+<text x="44" y="598" fill="rgb(166,173,200)">No staged changes</text>
+<text x="44" y="617" fill="rgb(166,173,200)">↑/k ↓/j move · enter/l open · / search · c configured · a all · p preview · ? help · q quit</text>
+</g></svg>
