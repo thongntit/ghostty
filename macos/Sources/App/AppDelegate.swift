@@ -36,6 +36,7 @@ class AppDelegate: NSObject,
     @IBOutlet private var menuServices: NSMenu?
     @IBOutlet private var menuCheckForUpdates: NSMenuItem?
     @IBOutlet private var menuOpenConfig: NSMenuItem?
+    @IBOutlet private var menuSettingsEditor: NSMenuItem?
     @IBOutlet private var menuReloadConfig: NSMenuItem?
     @IBOutlet private var menuSecureInput: NSMenuItem?
     @IBOutlet private var menuQuit: NSMenuItem?
@@ -101,6 +102,11 @@ class AppDelegate: NSObject,
     private var dockMenu: NSMenu = NSMenu()
 
     private var menuBarStatusItem: NSStatusItem?
+
+    private var settingsEditorURL: URL? {
+        let url = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/ghostty-config-tui")
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+    }
 
     /// This is only true before application has become active.
     private var applicationHasBecomeActive: Bool = false
@@ -248,6 +254,7 @@ class AppDelegate: NSObject,
 
         // Initial config loading
         ghosttyConfigDidChange(config: ghostty.config)
+        menuSettingsEditor?.isHidden = settingsEditorURL == nil
 
         // Start our update checker.
         updateController.startUpdater()
@@ -1064,9 +1071,14 @@ class AppDelegate: NSObject,
         item.button?.toolTip = appName
 
         let menu = NSMenu()
-        let actions: [(String, Selector)] = [
+        var actions: [(String, Selector)] = [
             ("Show Quick Terminal", #selector(toggleQuickTerminal(_:))),
-            ("New Window", #selector(newWindow(_:))),
+            ("New Window", #selector(newWindow(_:)))
+        ]
+        if settingsEditorURL != nil {
+            actions.append(("Settings…", #selector(openSettingsEditor(_:))))
+        }
+        actions += [
             ("Open Configuration", #selector(openConfig(_:))),
             ("Reload Configuration", #selector(reloadConfig(_:)))
         ]
@@ -1095,6 +1107,30 @@ class AppDelegate: NSObject,
     }
 
     // MARK: - IB Actions
+
+    @IBAction func openSettingsEditor(_ sender: Any?) {
+        guard let editor = settingsEditorURL,
+              let ghosttyExecutable = Bundle.main.executableURL else {
+            ghostty.openConfig()
+            return
+        }
+
+        // Prepare a default config for first-time users. The TUI discovers
+        // all default roots itself so it can preserve includes and precedence.
+        guard ghostty.editableConfigPath() != nil else { return }
+
+        var surface = Ghostty.SurfaceConfiguration()
+        surface.environmentVariables["GHOSTTY_SETTINGS_EDITOR"] = editor.path
+        surface.environmentVariables["GHOSTTY_SETTINGS_BIN_DIR"] = ghosttyExecutable.deletingLastPathComponent().path
+        // The settings window needs color to show theme previews. Keep the
+        // parent environment unchanged and use Ghostty's own terminal profile.
+        surface.command = #"/usr/bin/env -u NO_COLOR PATH="$GHOSTTY_SETTINGS_BIN_DIR:$PATH" "$GHOSTTY_SETTINGS_EDITOR""#
+        if let path = ghostty.configPath {
+            surface.environmentVariables["GHOSTTY_SETTINGS_CONFIG"] = path
+            surface.command? += #" --config "$GHOSTTY_SETTINGS_CONFIG""#
+        }
+        _ = TerminalController.newWindow(ghostty, withBaseConfig: surface)
+    }
 
     @IBAction func openConfig(_ sender: Any?) {
         ghostty.openConfig()

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1288" height="898" viewBox="0 0 1288 898" role="img" aria-labelledby="title desc">
+<title id="title">Ghostty Config TUI runtime capture: preview diff</title>
+<desc id="desc">Actual terminal frame rendered from the running Ghostty Config TUI at 120 columns by 40 rows.</desc>
+<rect width="1288" height="898" fill="#09090f"/>
+<rect x="28" y="28" width="1232" height="842" rx="18" fill="#11111b" stroke="#313244" stroke-width="2"/>
+<rect x="28" y="28" width="1232" height="48" rx="18" fill="#1e1e2e"/>
+<rect x="28" y="54" width="1232" height="22" fill="#1e1e2e"/>
+<circle cx="59" cy="52" r="7" fill="#f38ba8"/><circle cx="83" cy="52" r="7" fill="#f9e2af"/><circle cx="107" cy="52" r="7" fill="#a6e3a1"/>
+<text x="644" y="57" text-anchor="middle" fill="#a6adc8" font-size="14" font-family="SFMono-Regular, Menlo, Monaco, Consolas, monospace">runtime capture · 120×40 PTY · preview diff</text>
+<g xml:space="preserve" font-family="SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15">
+<text x="44" y="104" fill="rgb(245,194,231)" font-weight="700" opacity="0.68">Ghostty Config TUI</text>
+<text x="44" y="123" fill="rgb(166,173,200)">Guided editor · saves are confirmed explicitly</text>
+<text x="44" y="180" fill="#cdd6f4">╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮</text>
+<text x="44" y="199" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="218" fill="#cdd6f4">│  </text>
+<text x="74" y="218" fill="rgb(137,220,235)">Preview</text>
+<text x="144" y="218" fill="#cdd6f4">                                                                                                             │</text>
+<text x="44" y="237" fill="#cdd6f4">│  </text>
+<text x="74" y="237" fill="rgb(203,166,247)" font-weight="700">DRY RUN — no file will be written</text>
+<text x="404" y="237" fill="#cdd6f4">                                                                                   │</text>
+<text x="44" y="256" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="275" fill="#cdd6f4">│  DRY RUN — no file will be written while previewing                                                                  │</text>
+<text x="44" y="294" fill="#cdd6f4">│  Candidate configuration                                                                                             │</text>
+<text x="44" y="313" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="332" fill="#cdd6f4">│  Staged file changes:                                                                                                │</text>
+<text x="44" y="351" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="370" fill="#cdd6f4">│  --- testdata/configs/editor-basic.ghostty ---                                                                       │</text>
+<text x="44" y="389" fill="#cdd6f4">│  + background-opacity = 0.9                                                                                          │</text>
+<text x="44" y="408" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="427" fill="#cdd6f4">│  Effective Ghostty configuration graph                                                                               │</text>
+<text x="44" y="446" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="465" fill="#cdd6f4">│  Roots:                                                                                                              │</text>
+<text x="44" y="484" fill="#cdd6f4">│  - testdata/configs/editor-basic.ghostty                                                                             │</text>
+<text x="44" y="503" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="522" fill="#cdd6f4">│  Loaded source files:                                                                                                │</text>
+<text x="44" y="541" fill="#cdd6f4">│  1. testdata/configs/editor-basic.ghostty                                                                            │</text>
+<text x="44" y="560" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="579" fill="#cdd6f4">│  Effective assignments: 8                                                                                            │</text>
+<text x="44" y="598" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:2  theme = catppuccin-mocha                                                   │</text>
+<text x="44" y="617" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:3  font-family = JetBrains Mono                                               │</text>
+<text x="44" y="636" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:4  font-size = 14                                                             │</text>
+<text x="44" y="655" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:5  background = 1e1e2e                                                        │</text>
+<text x="44" y="674" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:6  foreground = cdd6f4                                                        │</text>
+<text x="44" y="693" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:7  keybind = ctrl+shift+enter=new_window                                      │</text>
+<text x="44" y="712" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:8  unknown-option = keep-me                                                   │</text>
+<text x="44" y="731" fill="#cdd6f4">│  testdata/configs/editor-basic.ghostty:10  background-opacity = 0.9                                                  │</text>
+<text x="44" y="750" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="769" fill="#cdd6f4">│  --- candidate source documents ---                                                                                  │</text>
+<text x="44" y="788" fill="#cdd6f4">│                                                                                                                      │</text>
+<text x="44" y="807" fill="#cdd6f4">│  # testdata/configs/editor-basic.ghostty                                                                             │</text>
+<text x="44" y="826" fill="#cdd6f4">│  # Editor fixture: every untouched line must survive the dry run.                                                    │</text>
+<text x="44" y="845" fill="#cdd6f4">│                                                                                                                      │</text>
+</g></svg>
