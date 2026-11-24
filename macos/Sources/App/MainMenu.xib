@@ -126,6 +126,12 @@
                                     <action selector="setAsDefaultTerminal:" target="bbz-4X-AYv" id="QHh-CA-Qho"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Launch at Login" id="E6L-Xn-YHp">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="toggleLaunchAtLogin:" target="bbz-4X-AYv" id="gQu-p4-9Nx"/>
+                                </connections>
+                            </menuItem>
                             <menuItem isSeparatorItem="YES" id="4je-JR-u6R"/>
                             <menuItem title="Services" id="rJe-5J-bwL">
                                 <modifierMask key="keyEquivalentModifierMask"/>
