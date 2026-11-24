@@ -3,6 +3,7 @@ import SwiftUI
 import ApplicationServices
 import UserNotifications
 import OSLog
+import ServiceManagement
 import Sparkle
 import GhosttyKit
 
@@ -118,6 +119,9 @@ class AppDelegate: NSObject,
 
     /// This is only true before application has become active.
     private var applicationHasBecomeActive: Bool = false
+
+    /// A login item starts Ghostty without creating an initial terminal window.
+    private var launchedAsLoginItem = false
 
     /// This is set in applicationDidFinishLaunching with the system uptime so we can determine the
     /// seconds since the process was launched.
@@ -246,6 +250,8 @@ class AppDelegate: NSObject,
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        launchedAsLoginItem = Self.isLoginItemOpenEvent(NSAppleEventManager.shared().currentAppleEvent)
+
         // System settings overrides
         UserDefaults.ghostty.register(defaults: [
             // Disable this so that repeated key events make it through to our terminal views.
@@ -408,12 +414,20 @@ class AppDelegate: NSObject,
             // is possible to have other windows in a few scenarios:
             //   - if we're opening a URL since `application(_:openFile:)` is called before this.
             //   - if we're restoring from persisted state
-            if TerminalController.all.isEmpty && derivedConfig.initialWindow {
+            if !launchedAsLoginItem && TerminalController.all.isEmpty && derivedConfig.initialWindow {
                 undoManager.disableUndoRegistration()
                 _ = TerminalController.newWindow(ghostty)
                 undoManager.enableUndoRegistration()
             }
         }
+    }
+
+    static func isLoginItemOpenEvent(_ event: NSAppleEventDescriptor?) -> Bool {
+        guard let event,
+              event.eventClass == AEEventClass(kCoreEventClass),
+              event.eventID == AEEventID(kAEOpenApplication) else { return false }
+        return event.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?.enumCodeValue ==
+            OSType(keyAELaunchedAsLogInItem)
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -477,7 +491,7 @@ class AppDelegate: NSObject,
         // If the application isn't active yet then we don't want to process
         // this because we're not ready. This happens sometimes in Xcode runs
         // but I haven't seen it happen in releases. I'm unsure why.
-        guard applicationHasBecomeActive else { return true }
+        guard applicationHasBecomeActive || launchedAsLoginItem else { return true }
 
         if #available(macOS 27.0, *) {
             // It seems that with macOS 27, running an App Intent against an already
@@ -1089,7 +1103,8 @@ class AppDelegate: NSObject,
         }
         actions += [
             ("Open Configuration", #selector(openConfig(_:))),
-            ("Reload Configuration", #selector(reloadConfig(_:)))
+            ("Reload Configuration", #selector(reloadConfig(_:))),
+            ("Launch at Login", #selector(toggleLaunchAtLogin(_:)))
         ]
         for (title, action) in actions {
             let actionItem = menu.addItem(withTitle: title, action: action, keyEquivalent: "")
@@ -1116,6 +1131,35 @@ class AppDelegate: NSObject,
     }
 
     // MARK: - IB Actions
+
+    @IBAction func toggleLaunchAtLogin(_ sender: Any?) {
+        let service = SMAppService.mainApp
+        do {
+            switch service.status {
+            // On a fresh install, macOS can report .notFound until the first registration.
+            case .notRegistered, .notFound:
+                try service.register()
+                if service.status == .requiresApproval {
+                    SMAppService.openSystemSettingsLoginItems()
+                }
+
+            case .enabled:
+                try service.unregister()
+
+            case .requiresApproval:
+                SMAppService.openSystemSettingsLoginItems()
+
+            @unknown default:
+                break
+            }
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Couldn’t Update Launch at Login"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.runModal()
+        }
+    }
 
     @IBAction func openQuickTerminalSetup(_ sender: Any?) {
         refreshQuickTerminalSetupState()
@@ -1539,6 +1583,12 @@ extension AppDelegate {
 extension AppDelegate: NSMenuItemValidation {
     func validateMenuItem(_ item: NSMenuItem) -> Bool {
         switch item.action {
+        case #selector(toggleLaunchAtLogin(_:)):
+            let status = SMAppService.mainApp.status
+            item.title = status == .requiresApproval ? "Launch at Login (Approval Required)…" : "Launch at Login"
+            item.state = status == .enabled ? .on : status == .requiresApproval ? .mixed : .off
+            return status == .enabled || status == .notRegistered || status == .notFound || status == .requiresApproval
+
         case #selector(setAsDefaultTerminal(_:)):
             return NSWorkspace.shared.defaultTerminal != Bundle.main.bundleURL
 
