@@ -38,12 +38,19 @@ func ValidateConfig(ctx context.Context, binary, path string) error {
 	}
 	validationContext, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	command := exec.CommandContext(validationContext, binary, "+validate-config", "--config-file", path)
-	output, err := command.CombinedOutput()
+	command := exec.CommandContext(validationContext, binary, "+validate-config", "--config-file="+path)
+	output, err := command.Output()
 	if err != nil {
 		message := strings.TrimSpace(string(output))
-		if strings.Contains(message, "SentryInitFailed") {
-			return fmt.Errorf("%w: %s", ErrValidatorUnavailable, message)
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			stderr := strings.TrimSpace(string(exitErr.Stderr))
+			if strings.Contains(stderr, "SentryInitFailed") {
+				return fmt.Errorf("%w: %s", ErrValidatorUnavailable, stderr)
+			}
+			if message == "" {
+				message = stderr
+			}
 		}
 		if message == "" {
 			return fmt.Errorf("Ghostty rejected the candidate: %w", err)

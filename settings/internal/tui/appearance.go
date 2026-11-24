@@ -419,6 +419,11 @@ func (m Model) renderAppearanceHeader() string {
 	status := "colors only  ·  Enter stages  ·  Ctrl+S saves"
 	if m.HasChanges() {
 		status = "staged in memory  ·  Ctrl+S saves  ·  no live reload"
+		if m.reloadFunc != nil {
+			status = "staged in memory  ·  Ctrl+S saves and applies"
+		}
+	} else if len(m.lastSave) > 0 {
+		status = "Ctrl+Z undoes the last save"
 	}
 	return strings.Join([]string{
 		lipgloss.JoinHorizontal(lipgloss.Center, titleStyle.Render("Ghostty Config TUI"), "  ", appearanceCurrentTag.Render("SAFE PREVIEW")),

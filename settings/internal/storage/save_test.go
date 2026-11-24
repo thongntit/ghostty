@@ -90,3 +90,50 @@ func TestSaveAllFollowsConfigSymlinkTarget(t *testing.T) {
 		t.Fatalf("target = %q", got)
 	}
 }
+
+func TestRestoreAllRestoresExactBytesWithoutChangingBackup(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.ghostty")
+	previous := []byte("theme = dark\r\n# kept\n")
+	saved := []byte("theme = light\n# kept\n")
+	backup := []byte("older backup\n")
+	if err := os.WriteFile(path, saved, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path+".bak", backup, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := RestoreAll([]FileChange{{Path: path, Original: saved, Candidate: previous}}); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(got, previous) {
+		t.Fatalf("restored bytes = %q, err=%v", got, err)
+	}
+	gotBackup, err := os.ReadFile(path + ".bak")
+	if err != nil || !bytes.Equal(gotBackup, backup) {
+		t.Fatalf("backup bytes = %q, err=%v", gotBackup, err)
+	}
+}
+
+func TestRestoreAllChecksEveryFileBeforeWriting(t *testing.T) {
+	directory := t.TempDir()
+	first := filepath.Join(directory, "first.ghostty")
+	second := filepath.Join(directory, "second.ghostty")
+	if err := os.WriteFile(first, []byte("saved one\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second, []byte("external edit\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := RestoreAll([]FileChange{
+		{Path: first, Original: []byte("saved one\n"), Candidate: []byte("old one\n")},
+		{Path: second, Original: []byte("saved two\n"), Candidate: []byte("old two\n")},
+	})
+	if err == nil || !strings.Contains(err.Error(), "changed since the last save") {
+		t.Fatalf("unexpected conflict result: %v", err)
+	}
+	got, readErr := os.ReadFile(first)
+	if readErr != nil || string(got) != "saved one\n" {
+		t.Fatalf("first file changed on conflict: %q, err=%v", got, readErr)
+	}
+}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -545,6 +546,62 @@ func TestSuccessfulSavePromotesDraftBaseline(t *testing.T) {
 	}
 	if len(calls) != 2 || string(calls[1][0].Original) != "theme = new\n" || string(calls[1][0].Candidate) != "theme = newer\n" {
 		t.Fatalf("second save snapshots = %+v", calls)
+	}
+}
+
+func TestUndoLastSaveRestoresPreviousBaselineAndNotifiesHost(t *testing.T) {
+	original := configdoc.Parse([]byte("theme = old\n"))
+	model := NewModel([]schema.Option{{Key: "theme", Kind: schema.KindString, Edit: schema.EditScalar}}, "fixture.ghostty", original)
+	var undo []FileSnapshot
+	notified := 0
+	model.SetSaveFunc(func([]FileSnapshot) error { return nil })
+	model.SetUndoFunc(func(changes []FileSnapshot) error { undo = cloneSnapshots(changes); return nil })
+	model.SetReloadFunc(func() error { notified++; return nil })
+	if err := model.stageScalar("theme", "new"); err != nil {
+		t.Fatal(err)
+	}
+	model.saveNow()
+	if !strings.Contains(model.Status(), "Ghostty notified") || notified != 1 {
+		t.Fatalf("save reload status=%q calls=%d", model.Status(), notified)
+	}
+	model, _ = model.Update(tea.KeyPressMsg(tea.Key{Code: 'z', Mod: tea.ModCtrl}))
+	if len(undo) != 1 || string(undo[0].Original) != "theme = new\n" || string(undo[0].Candidate) != "theme = old\n" {
+		t.Fatalf("undo changes = %+v", undo)
+	}
+	if string(model.DraftBytes()) != "theme = old\n" || model.HasChanges() {
+		t.Fatalf("undo left incorrect editor state: draft=%q dirty=%v", model.DraftBytes(), model.HasChanges())
+	}
+	if notified != 2 || !strings.Contains(model.Status(), "Undid last save") {
+		t.Fatalf("undo status=%q calls=%d", model.Status(), notified)
+	}
+	model.undoLastSave()
+	if !strings.Contains(model.Status(), "No successful save") {
+		t.Fatalf("second undo status=%q", model.Status())
+	}
+}
+
+func TestUndoLastSavePreservesSnapshotOnConflictAndBlocksDirtyDraft(t *testing.T) {
+	model := NewModel([]schema.Option{{Key: "theme", Kind: schema.KindString, Edit: schema.EditScalar}}, "fixture.ghostty", configdoc.Parse([]byte("theme = old\n")))
+	model.SetSaveFunc(func([]FileSnapshot) error { return nil })
+	model.SetUndoFunc(func([]FileSnapshot) error { return fmt.Errorf("config changed since the last save") })
+	if err := model.stageScalar("theme", "new"); err != nil {
+		t.Fatal(err)
+	}
+	model.saveNow()
+	if err := model.stageScalar("theme", "draft"); err != nil {
+		t.Fatal(err)
+	}
+	model.undoLastSave()
+	if !strings.Contains(model.Status(), "unsaved changes") {
+		t.Fatalf("dirty undo status=%q", model.Status())
+	}
+	model.draft = model.original.Clone()
+	model.undoLastSave()
+	if !strings.Contains(model.Status(), "Undo failed") {
+		t.Fatalf("conflict status=%q", model.Status())
+	}
+	if len(model.lastSave) != 1 || string(model.OriginalBytes()) != "theme = new\n" {
+		t.Fatal("undo conflict lost retry snapshot or changed baseline")
 	}
 }
 

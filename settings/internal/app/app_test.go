@@ -40,6 +40,21 @@ func TestNewLoadsExplicitFixtureWithoutGhostty(t *testing.T) {
 	}
 }
 
+func TestHostReloadNotifierRejectsUnsafePIDValues(t *testing.T) {
+	for _, value := range []string{"0", "1", "2147483648", "999999999999999999999", "abc"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("GHOSTTY_SETTINGS_RELOAD_PID", value)
+			notify := hostReloadNotifier()
+			if notify == nil {
+				t.Fatal("expected unavailable-notifier callback")
+			}
+			if err := notify(); err == nil || !strings.Contains(err.Error(), "positive process ID") {
+				t.Fatalf("notification error = %v", err)
+			}
+		})
+	}
+}
+
 func TestNewDiscoversUserConfig(t *testing.T) {
 	home := t.TempDir()
 	xdg := filepath.Join(home, "xdg")

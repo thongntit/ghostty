@@ -389,17 +389,17 @@ func (m Model) footer() string {
 	if m.help {
 		if m.categoryNavigation && m.mode == ModeBrowse {
 			if m.browseLevel == browseHome {
-				return mutedStyle.Render("/ or ctrl+f search all settings · t themes · g categories · q quit · ? close help")
+				return mutedStyle.Render("/ or ctrl+f search all settings · t themes · g categories · ctrl+z undo last save · q quit · ? close help")
 			}
 			if m.browseLevel == browseThemes {
-				return mutedStyle.Render("/ search themes · ctrl+f search all settings · enter stage · esc back · ? close help")
+				return mutedStyle.Render("/ search themes · ctrl+f search all settings · enter stage · ctrl+z undo last save · esc back · ? close help")
 			}
 			if m.browseLevel == browseCategories {
-				return mutedStyle.Render("↑/k ↓/j move · enter/l open · / search · c configured · a all · p preview · q quit · ? close help")
+				return mutedStyle.Render("↑/k ↓/j move · enter/l open · / search · c configured · a all · p preview · ctrl+z undo last save · q quit · ? close help")
 			}
-			return mutedStyle.Render("↑/k ↓/j move · enter/e edit · esc/h categories · c configured · a all · g categories · r reset · u revert · p preview · ctrl+s save · q quit")
+			return mutedStyle.Render("↑/k ↓/j move · enter/e edit · esc/h categories · c configured · a all · g categories · r reset · u revert · p preview · ctrl+s save · ctrl+z undo save · q quit")
 		}
-		return mutedStyle.Render("↑/k ↓/j move · enter/e edit · r reset · u revert · p preview · ctrl+s save · ? close help · q quit")
+		return mutedStyle.Render("↑/k ↓/j move · enter/e edit · r reset · u revert · p preview · ctrl+s save · ctrl+z undo save · ? close help · q quit")
 	}
 	switch m.mode {
 	case ModeEdit:
@@ -455,7 +455,7 @@ func (m Model) footer() string {
 		}
 		return mutedStyle.Render("enter stage · esc cancel")
 	case ModePreview:
-		return mutedStyle.Render("↑/k ↓/j scroll · pgup/pgdn page · esc back · q quit")
+		return mutedStyle.Render("↑/k ↓/j scroll · pgup/pgdn page · ctrl+z undo last save · esc back · q quit")
 	case ModeConfirmQuit:
 		return mutedStyle.Render("y save and quit · d discard and quit · esc back")
 	default:
@@ -475,9 +475,9 @@ func (m Model) footer() string {
 				}
 				return mutedStyle.Render("↑/↓ select · enter edit · / refine search · esc back")
 			}
-			return mutedStyle.Render("↑/k ↓/j move · / search · enter/e edit · esc/h categories · c configured · a all · g categories · r reset · u revert · p preview · ctrl+s save · ? help · q quit")
+			return mutedStyle.Render("↑/k ↓/j move · / search · enter/e edit · esc/h categories · c configured · a all · g categories · r reset · u revert · p preview · ctrl+s save · ctrl+z undo save · ? help · q quit")
 		}
-		return mutedStyle.Render("↑/k ↓/j move · / search · enter/e edit · r reset · u revert · p preview · ctrl+s save · ? help · q quit")
+		return mutedStyle.Render("↑/k ↓/j move · / search · enter/e edit · r reset · u revert · p preview · ctrl+s save · ctrl+z undo save · ? help · q quit")
 	}
 }
 

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ApplicationServices
 import UserNotifications
 import OSLog
 import Sparkle
@@ -102,6 +103,13 @@ class AppDelegate: NSObject,
     private var dockMenu: NSMenu = NSMenu()
 
     private var menuBarStatusItem: NSStatusItem?
+
+    private var quickTerminalSetupWindowController: QuickTerminalSetupWindowController?
+
+    @Published private(set) var quickTerminalGlobalShortcut: String?
+    @Published private(set) var quickTerminalGlobalBindingConfigured = false
+    @Published private(set) var quickTerminalAccessibilityGranted = false
+    @Published private(set) var quickTerminalListenerReady = false
 
     private var settingsEditorURL: URL? {
         let url = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/ghostty-config-tui")
@@ -1073,6 +1081,7 @@ class AppDelegate: NSObject,
         let menu = NSMenu()
         var actions: [(String, Selector)] = [
             ("Show Quick Terminal", #selector(toggleQuickTerminal(_:))),
+            ("Quick Terminal Setup…", #selector(openQuickTerminalSetup(_:))),
             ("New Window", #selector(newWindow(_:)))
         ]
         if settingsEditorURL != nil {
@@ -1108,6 +1117,62 @@ class AppDelegate: NSObject,
 
     // MARK: - IB Actions
 
+    @IBAction func openQuickTerminalSetup(_ sender: Any?) {
+        refreshQuickTerminalSetupState()
+        if quickTerminalSetupWindowController == nil {
+            quickTerminalSetupWindowController = QuickTerminalSetupWindowController(appDelegate: self)
+        }
+        quickTerminalSetupWindowController?.showWindow(sender)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Refreshes the setup panel's shortcut and runtime readiness from the current
+    /// Ghostty config and the same event tap used to handle global keybindings.
+    @MainActor func refreshQuickTerminalSetupState() {
+        quickTerminalAccessibilityGranted = AXIsProcessTrusted()
+        quickTerminalListenerReady = GlobalEventTap.shared.isEnabled
+
+        guard let config = ghostty.config.config else {
+            quickTerminalGlobalBindingConfigured = false
+            quickTerminalGlobalShortcut = nil
+            return
+        }
+
+        let action = "toggle_quick_terminal"
+        let trigger = action.withCString {
+            ghostty_config_global_trigger(config, $0, UInt(action.utf8.count))
+        }
+        guard trigger.tag != GHOSTTY_TRIGGER_PHYSICAL || trigger.key.physical != GHOSTTY_KEY_UNIDENTIFIED else {
+            quickTerminalGlobalBindingConfigured = false
+            quickTerminalGlobalShortcut = nil
+            return
+        }
+
+        quickTerminalGlobalBindingConfigured = true
+        quickTerminalGlobalShortcut = Self.quickTerminalShortcutDescription(trigger)
+    }
+
+    @MainActor private static func quickTerminalShortcutDescription(_ trigger: ghostty_input_trigger_s) -> String? {
+        guard let shortcut = Ghostty.keyboardShortcut(for: trigger) else { return nil }
+
+        let modifiers = Ghostty.eventModifierFlags(mods: trigger.mods)
+        var description = ""
+        if modifiers.contains(.control) { description += "⌃" }
+        if modifiers.contains(.option) { description += "⌥" }
+        if modifiers.contains(.shift) { description += "⇧" }
+        if modifiers.contains(.command) { description += "⌘" }
+        let key = shortcut.key.character
+        description += key.isWhitespace ? "Space" : String(key).uppercased()
+        return description
+    }
+
+    @IBAction func testQuickTerminalSetup(_ sender: Any?) {
+        guard quickTerminalGlobalBindingConfigured,
+              quickTerminalAccessibilityGranted,
+              quickTerminalListenerReady else { return }
+        toggleQuickTerminal(self)
+    }
+
     @IBAction func openSettingsEditor(_ sender: Any?) {
         guard let editor = settingsEditorURL,
               let ghosttyExecutable = Bundle.main.executableURL else {
@@ -1122,6 +1187,7 @@ class AppDelegate: NSObject,
         var surface = Ghostty.SurfaceConfiguration()
         surface.environmentVariables["GHOSTTY_SETTINGS_EDITOR"] = editor.path
         surface.environmentVariables["GHOSTTY_SETTINGS_BIN_DIR"] = ghosttyExecutable.deletingLastPathComponent().path
+        surface.environmentVariables["GHOSTTY_SETTINGS_RELOAD_PID"] = String(ProcessInfo.processInfo.processIdentifier)
         // The settings window needs color to show theme previews. Keep the
         // parent environment unchanged and use Ghostty's own terminal profile.
         surface.command = #"/usr/bin/env -u NO_COLOR PATH="$GHOSTTY_SETTINGS_BIN_DIR:$PATH" "$GHOSTTY_SETTINGS_EDITOR""#

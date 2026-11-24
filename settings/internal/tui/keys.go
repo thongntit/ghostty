@@ -4,21 +4,22 @@ import "charm.land/bubbles/v2/key"
 
 // KeyMap centralizes the first screen's interaction contract.
 type KeyMap struct {
-	Up      key.Binding
-	Down    key.Binding
-	Quit    key.Binding
-	Enter   key.Binding
-	Edit    key.Binding
-	Reset   key.Binding
-	Undo    key.Binding
-	Preview key.Binding
-	Save    key.Binding
-	Help    key.Binding
-	Escape  key.Binding
-	Left    key.Binding
-	Right   key.Binding
-	Confirm key.Binding
-	Reject  key.Binding
+	Up       key.Binding
+	Down     key.Binding
+	Quit     key.Binding
+	Enter    key.Binding
+	Edit     key.Binding
+	Reset    key.Binding
+	Undo     key.Binding
+	Preview  key.Binding
+	Save     key.Binding
+	UndoSave key.Binding
+	Help     key.Binding
+	Escape   key.Binding
+	Left     key.Binding
+	Right    key.Binding
+	Confirm  key.Binding
+	Reject   key.Binding
 }
 
 var defaultKeyMap = KeyMap{
@@ -57,6 +58,10 @@ var defaultKeyMap = KeyMap{
 	Save: key.NewBinding(
 		key.WithKeys("ctrl+s"),
 		key.WithHelp("ctrl+s", "save"),
+	),
+	UndoSave: key.NewBinding(
+		key.WithKeys("ctrl+z"),
+		key.WithHelp("ctrl+z", "undo last save"),
 	),
 	Help: key.NewBinding(
 		key.WithKeys("?"),
