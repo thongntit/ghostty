@@ -3559,6 +3559,13 @@ keybind: Keybinds = .{},
 /// Available since: 1.2.0
 @"macos-hidden": MacHidden = .never,
 
+/// Show a macOS menu bar icon with actions for the quick terminal, new
+/// windows, configuration, and quitting Ghostty.
+///
+/// When unset, the icon is shown if `macos-hidden = always`. Set this to
+/// `true` to show it with any activation policy, or `false` to hide it.
+@"macos-menu-bar-icon": ?bool = null,
+
 /// If true, Ghostty on macOS will automatically enable the "Secure Input"
 /// feature when it detects that a password prompt is being displayed.
 ///

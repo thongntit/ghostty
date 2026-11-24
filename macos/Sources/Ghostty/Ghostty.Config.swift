@@ -452,6 +452,16 @@ extension Ghostty {
             return MacHidden(rawValue: str) ?? .never
         }
 
+        var macosMenuBarIcon: Bool {
+            guard let config = self.config else { return false }
+            var v = false
+            let key = "macos-menu-bar-icon"
+            if ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) {
+                return v
+            }
+            return macosHidden == .always
+        }
+
         var focusFollowsMouse: Bool {
             guard let config = self.config else { return false }
             var v = false
