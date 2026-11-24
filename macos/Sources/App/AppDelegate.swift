@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import ApplicationServices
 import UserNotifications
 import OSLog
 import Sparkle
@@ -36,6 +37,7 @@ class AppDelegate: NSObject,
     @IBOutlet private var menuServices: NSMenu?
     @IBOutlet private var menuCheckForUpdates: NSMenuItem?
     @IBOutlet private var menuOpenConfig: NSMenuItem?
+    @IBOutlet private var menuSettingsEditor: NSMenuItem?
     @IBOutlet private var menuReloadConfig: NSMenuItem?
     @IBOutlet private var menuSecureInput: NSMenuItem?
     @IBOutlet private var menuQuit: NSMenuItem?
@@ -68,6 +70,7 @@ class AppDelegate: NSObject,
     @IBOutlet private var menuToggleVisibility: NSMenuItem?
     @IBOutlet private var menuToggleFullScreen: NSMenuItem?
     @IBOutlet private var menuBringAllToFront: NSMenuItem?
+    @IBOutlet private var menuMoveTabToQuickTerminal: NSMenuItem?
     @IBOutlet private var menuZoomSplit: NSMenuItem?
     @IBOutlet private var menuPreviousSplit: NSMenuItem?
     @IBOutlet private var menuNextSplit: NSMenuItem?
@@ -98,6 +101,20 @@ class AppDelegate: NSObject,
 
     /// The dock menu
     private var dockMenu: NSMenu = NSMenu()
+
+    private var menuBarStatusItem: NSStatusItem?
+
+    private var quickTerminalSetupWindowController: QuickTerminalSetupWindowController?
+
+    @Published private(set) var quickTerminalGlobalShortcut: String?
+    @Published private(set) var quickTerminalGlobalBindingConfigured = false
+    @Published private(set) var quickTerminalAccessibilityGranted = false
+    @Published private(set) var quickTerminalListenerReady = false
+
+    private var settingsEditorURL: URL? {
+        let url = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/ghostty-config-tui")
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+    }
 
     /// This is only true before application has become active.
     private var applicationHasBecomeActive: Bool = false
@@ -245,6 +262,7 @@ class AppDelegate: NSObject,
 
         // Initial config loading
         ghosttyConfigDidChange(config: ghostty.config)
+        menuSettingsEditor?.isHidden = settingsEditorURL == nil
 
         // Start our update checker.
         updateController.startUpdater()
@@ -484,8 +502,21 @@ class AppDelegate: NSObject,
             }
         }
 
-        // No visible windows, open a new one.
-        _ = TerminalController.newWindow(ghostty)
+        // If the quick terminal is currently active (initialized) AND has at
+        // least one tab, show it instead of opening a new window. Otherwise
+        // open a new regular window — including the case where the quick
+        // terminal has been emptied (last tab closed) since the user has no
+        // visible QT state to return to.
+        switch quickTerminalControllerState {
+        case .uninitialized, .pendingRestore:
+            _ = TerminalController.newWindow(ghostty)
+        case .initialized:
+            if quickController.tabManager.tabs.isEmpty {
+                _ = TerminalController.newWindow(ghostty)
+            } else if !quickController.visible {
+                quickController.animateIn()
+            }
+        }
         return false
     }
 
@@ -704,6 +735,7 @@ class AppDelegate: NSObject,
     @objc private func quickTerminalDidChangeVisibility(_ notification: Notification) {
         guard let quickController = notification.object as? QuickTerminalController else { return }
         self.menuQuickTerminal?.state = if quickController.visible { .on } else { .off }
+        syncMenuBarQuickTerminal(visible: quickController.visible)
     }
 
     @objc private func ghosttyConfigDidChange(_ notification: Notification) {
@@ -884,6 +916,8 @@ class AppDelegate: NSObject,
             NSApp.setActivationPolicy(.accessory)
         }
 
+        syncMenuBarIcon(enabled: config.macosMenuBarIcon)
+
         // If we have configuration errors, we need to show them.
         let c = ConfigurationErrorsController.sharedInstance
         c.errors = config.errors
@@ -1026,7 +1060,143 @@ class AppDelegate: NSObject,
         UserDefaults.ghostty.set(input.global, forKey: "SecureInput")
     }
 
+    // MARK: - Menu Bar Icon
+
+    private func syncMenuBarIcon(enabled: Bool) {
+        guard enabled else {
+            if let item = menuBarStatusItem {
+                NSStatusBar.system.removeStatusItem(item)
+                menuBarStatusItem = nil
+            }
+            return
+        }
+        guard menuBarStatusItem == nil else { return }
+
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Ghostty"
+        item.button?.image = NSImage(named: "MenuBarGhostty")
+        item.button?.setAccessibilityLabel(appName)
+        item.button?.toolTip = appName
+
+        let menu = NSMenu()
+        var actions: [(String, Selector)] = [
+            ("Show Quick Terminal", #selector(toggleQuickTerminal(_:))),
+            ("Quick Terminal Setup…", #selector(openQuickTerminalSetup(_:))),
+            ("New Window", #selector(newWindow(_:)))
+        ]
+        if settingsEditorURL != nil {
+            actions.append(("Settings…", #selector(openSettingsEditor(_:))))
+        }
+        actions += [
+            ("Open Configuration", #selector(openConfig(_:))),
+            ("Reload Configuration", #selector(reloadConfig(_:)))
+        ]
+        for (title, action) in actions {
+            let actionItem = menu.addItem(withTitle: title, action: action, keyEquivalent: "")
+            actionItem.target = self
+        }
+        menu.addItem(.separator())
+        let quitItem = menu.addItem(
+            withTitle: "Quit \(appName)",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: ""
+        )
+        quitItem.target = NSApp
+
+        item.menu = menu
+        menuBarStatusItem = item
+        syncMenuBarQuickTerminal(visible: quickControllerInitialized && quickController.visible)
+    }
+
+    private func syncMenuBarQuickTerminal(visible: Bool) {
+        let item = menuBarStatusItem?.menu?.items.first {
+            $0.action == #selector(toggleQuickTerminal(_:))
+        }
+        item?.title = visible ? "Hide Quick Terminal" : "Show Quick Terminal"
+    }
+
     // MARK: - IB Actions
+
+    @IBAction func openQuickTerminalSetup(_ sender: Any?) {
+        refreshQuickTerminalSetupState()
+        if quickTerminalSetupWindowController == nil {
+            quickTerminalSetupWindowController = QuickTerminalSetupWindowController(appDelegate: self)
+        }
+        quickTerminalSetupWindowController?.showWindow(sender)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Refreshes the setup panel's shortcut and runtime readiness from the current
+    /// Ghostty config and the same event tap used to handle global keybindings.
+    @MainActor func refreshQuickTerminalSetupState() {
+        quickTerminalAccessibilityGranted = AXIsProcessTrusted()
+        quickTerminalListenerReady = GlobalEventTap.shared.isEnabled
+
+        guard let config = ghostty.config.config else {
+            quickTerminalGlobalBindingConfigured = false
+            quickTerminalGlobalShortcut = nil
+            return
+        }
+
+        let action = "toggle_quick_terminal"
+        let trigger = action.withCString {
+            ghostty_config_global_trigger(config, $0, UInt(action.utf8.count))
+        }
+        guard trigger.tag != GHOSTTY_TRIGGER_PHYSICAL || trigger.key.physical != GHOSTTY_KEY_UNIDENTIFIED else {
+            quickTerminalGlobalBindingConfigured = false
+            quickTerminalGlobalShortcut = nil
+            return
+        }
+
+        quickTerminalGlobalBindingConfigured = true
+        quickTerminalGlobalShortcut = Self.quickTerminalShortcutDescription(trigger)
+    }
+
+    @MainActor private static func quickTerminalShortcutDescription(_ trigger: ghostty_input_trigger_s) -> String? {
+        guard let shortcut = Ghostty.keyboardShortcut(for: trigger) else { return nil }
+
+        let modifiers = Ghostty.eventModifierFlags(mods: trigger.mods)
+        var description = ""
+        if modifiers.contains(.control) { description += "⌃" }
+        if modifiers.contains(.option) { description += "⌥" }
+        if modifiers.contains(.shift) { description += "⇧" }
+        if modifiers.contains(.command) { description += "⌘" }
+        let key = shortcut.key.character
+        description += key.isWhitespace ? "Space" : String(key).uppercased()
+        return description
+    }
+
+    @IBAction func testQuickTerminalSetup(_ sender: Any?) {
+        guard quickTerminalGlobalBindingConfigured,
+              quickTerminalAccessibilityGranted,
+              quickTerminalListenerReady else { return }
+        toggleQuickTerminal(self)
+    }
+
+    @IBAction func openSettingsEditor(_ sender: Any?) {
+        guard let editor = settingsEditorURL,
+              let ghosttyExecutable = Bundle.main.executableURL else {
+            ghostty.openConfig()
+            return
+        }
+
+        // Prepare a default config for first-time users. The TUI discovers
+        // all default roots itself so it can preserve includes and precedence.
+        guard ghostty.editableConfigPath() != nil else { return }
+
+        var surface = Ghostty.SurfaceConfiguration()
+        surface.environmentVariables["GHOSTTY_SETTINGS_EDITOR"] = editor.path
+        surface.environmentVariables["GHOSTTY_SETTINGS_BIN_DIR"] = ghosttyExecutable.deletingLastPathComponent().path
+        surface.environmentVariables["GHOSTTY_SETTINGS_RELOAD_PID"] = String(ProcessInfo.processInfo.processIdentifier)
+        // The settings window needs color to show theme previews. Keep the
+        // parent environment unchanged and use Ghostty's own terminal profile.
+        surface.command = #"/usr/bin/env -u NO_COLOR PATH="$GHOSTTY_SETTINGS_BIN_DIR:$PATH" "$GHOSTTY_SETTINGS_EDITOR""#
+        if let path = ghostty.configPath {
+            surface.environmentVariables["GHOSTTY_SETTINGS_CONFIG"] = path
+            surface.command? += #" --config "$GHOSTTY_SETTINGS_CONFIG""#
+        }
+        _ = TerminalController.newWindow(ghostty, withBaseConfig: surface)
+    }
 
     @IBAction func openConfig(_ sender: Any?) {
         ghostty.openConfig()
@@ -1229,6 +1399,11 @@ extension AppDelegate {
         self.menuMoveSplitDividerRight?.setImageIfDesired(systemSymbolName: "arrow.right.to.line")
         self.menuFloatOnTop?.setImageIfDesired(systemSymbolName: "square.filled.on.square")
         self.menuFindParent?.setImageIfDesired(systemSymbolName: "text.page.badge.magnifyingglass")
+        if #available(macOS 26.0, *) {
+            self.menuMoveTabToQuickTerminal?.setImageIfDesired(systemSymbolName: "arrow.up.to.line.square")
+        } else {
+            self.menuMoveTabToQuickTerminal?.setImageIfDesired(systemSymbolName: "arrow.up.to.line")
+        }
     }
 
     /// Sync all of our menu item keyboard shortcuts with the Ghostty configuration.

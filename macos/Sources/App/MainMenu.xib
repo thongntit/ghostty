@@ -38,10 +38,12 @@
                 <outlet property="menuMoveSplitDividerLeft" destination="wSR-ny-j1a" id="HCZ-CI-2ob"/>
                 <outlet property="menuMoveSplitDividerRight" destination="CcX-ql-QU4" id="rIn-PK-fVM"/>
                 <outlet property="menuMoveSplitDividerUp" destination="h9Y-40-3oo" id="dDi-Vq-I3r"/>
+                <outlet property="menuMoveTabToQuickTerminal" destination="R3q-9T-mQV" id="K7r-4M-pQS"/>
                 <outlet property="menuNewTab" destination="uTG-Vz-hJU" id="eMg-R3-SeS"/>
                 <outlet property="menuNewWindow" destination="Was-JA-tGl" id="lK7-3I-CPG"/>
                 <outlet property="menuNextSplit" destination="bD7-ei-wKU" id="LeT-xw-eh4"/>
                 <outlet property="menuOpenConfig" destination="BOF-NM-1cW" id="Nze-Go-glw"/>
+                <outlet property="menuSettingsEditor" destination="VtX-Gu-mYj" id="bNp-B3-zta"/>
                 <outlet property="menuPaste" destination="i27-pK-umN" id="ICc-X2-gV3"/>
                 <outlet property="menuPasteSelection" destination="akq-ov-Jjh" id="GS8-aQ-hVw"/>
                 <outlet property="menuPreviousSplit" destination="Lic-px-1wg" id="Rto-CG-yRe"/>
@@ -97,6 +99,12 @@
                             <menuItem title="Preferences…" keyEquivalent="," id="BOF-NM-1cW">
                                 <connections>
                                     <action selector="openConfig:" target="bbz-4X-AYv" id="X65-fg-iWU"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Settings Editor…" id="VtX-Gu-mYj">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="openSettingsEditor:" target="bbz-4X-AYv" id="nFr-7K-PYX"/>
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="GOd-qX-exa"/>
@@ -365,6 +373,12 @@
                                     <action selector="toggleQuickTerminal:" target="bbz-4X-AYv" id="qDV-sz-Agc"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Quick Terminal Setup…" id="ZtQ-8J-4ab">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="openQuickTerminalSetup:" target="bbz-4X-AYv" id="A9k-Sv-C56"/>
+                                </connections>
+                            </menuItem>
                             <menuItem isSeparatorItem="YES" id="bC9-n9-RbJ"/>
                             <menuItem title="Terminal Inspector" id="QwP-M5-fvh">
                                 <modifierMask key="keyEquivalentModifierMask"/>
@@ -404,6 +418,13 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="rlu-tP-x0P"/>
+                            <menuItem title="Move Tab to Quick Terminal" id="R3q-9T-mQV">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="moveTabToQuickTerminal:" target="-1" id="J7s-5K-nPL"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="A9q-8G-xKP"/>
                             <menuItem title="Zoom Split" id="oPd-mn-IEH">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>

@@ -19,6 +19,9 @@ class GlobalEventTap {
     // created.
     fileprivate var eventTap: CFMachPort?
 
+    /// Whether the system event tap is currently installed.
+    var isEnabled: Bool { eventTap != nil }
+
     // Polls Accessibility permission before enabling the global event tap.
     private var enableTimer: Timer?
 
@@ -44,14 +47,16 @@ class GlobalEventTap {
         }
 
         // Ask macOS to prompt for Accessibility access. Approval happens
-        // asynchronously, so ignore the current result and poll below.
+        // asynchronously, so ignore the current result and poll below. The
+        // setup panel remains available when the user dismisses the prompt or
+        // needs to add Ghostty manually in System Settings.
         Self.logger.info("No accessibility permission detected, prompting...")
         let options = [
             kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true,
         ] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
 
-        // Check in a timer
+        // Check in a timer.
         enableTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self, AXIsProcessTrusted() else { return }
 
