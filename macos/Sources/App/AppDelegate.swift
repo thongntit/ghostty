@@ -100,6 +100,8 @@ class AppDelegate: NSObject,
     /// The dock menu
     private var dockMenu: NSMenu = NSMenu()
 
+    private var menuBarStatusItem: NSStatusItem?
+
     /// This is only true before application has become active.
     private var applicationHasBecomeActive: Bool = false
 
@@ -718,6 +720,7 @@ class AppDelegate: NSObject,
     @objc private func quickTerminalDidChangeVisibility(_ notification: Notification) {
         guard let quickController = notification.object as? QuickTerminalController else { return }
         self.menuQuickTerminal?.state = if quickController.visible { .on } else { .off }
+        syncMenuBarQuickTerminal(visible: quickController.visible)
     }
 
     @objc private func ghosttyConfigDidChange(_ notification: Notification) {
@@ -898,6 +901,8 @@ class AppDelegate: NSObject,
             NSApp.setActivationPolicy(.accessory)
         }
 
+        syncMenuBarIcon(enabled: config.macosMenuBarIcon)
+
         // If we have configuration errors, we need to show them.
         let c = ConfigurationErrorsController.sharedInstance
         c.errors = config.errors
@@ -1038,6 +1043,55 @@ class AppDelegate: NSObject,
         }
         self.menuSecureInput?.state = if input.global { .on } else { .off }
         UserDefaults.ghostty.set(input.global, forKey: "SecureInput")
+    }
+
+    // MARK: - Menu Bar Icon
+
+    private func syncMenuBarIcon(enabled: Bool) {
+        guard enabled else {
+            if let item = menuBarStatusItem {
+                NSStatusBar.system.removeStatusItem(item)
+                menuBarStatusItem = nil
+            }
+            return
+        }
+        guard menuBarStatusItem == nil else { return }
+
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let appName = Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "Ghostty"
+        item.button?.image = NSImage(named: "MenuBarGhostty")
+        item.button?.setAccessibilityLabel(appName)
+        item.button?.toolTip = appName
+
+        let menu = NSMenu()
+        let actions: [(String, Selector)] = [
+            ("Show Quick Terminal", #selector(toggleQuickTerminal(_:))),
+            ("New Window", #selector(newWindow(_:))),
+            ("Open Configuration", #selector(openConfig(_:))),
+            ("Reload Configuration", #selector(reloadConfig(_:)))
+        ]
+        for (title, action) in actions {
+            let actionItem = menu.addItem(withTitle: title, action: action, keyEquivalent: "")
+            actionItem.target = self
+        }
+        menu.addItem(.separator())
+        let quitItem = menu.addItem(
+            withTitle: "Quit \(appName)",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: ""
+        )
+        quitItem.target = NSApp
+
+        item.menu = menu
+        menuBarStatusItem = item
+        syncMenuBarQuickTerminal(visible: quickControllerInitialized && quickController.visible)
+    }
+
+    private func syncMenuBarQuickTerminal(visible: Bool) {
+        let item = menuBarStatusItem?.menu?.items.first {
+            $0.action == #selector(toggleQuickTerminal(_:))
+        }
+        item?.title = visible ? "Hide Quick Terminal" : "Show Quick Terminal"
     }
 
     // MARK: - IB Actions

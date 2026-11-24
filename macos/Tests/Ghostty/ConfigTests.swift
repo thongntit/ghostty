@@ -56,6 +56,23 @@ struct ConfigTests {
         #expect(config.macosWindowShadow == true)
     }
 
+    @Test func macosMenuBarIconDefaultsToHiddenMode() throws {
+        let regular = try TemporaryConfig("")
+        let hidden = try TemporaryConfig("macos-hidden = always")
+        #expect(!regular.macosMenuBarIcon)
+        #expect(hidden.macosMenuBarIcon)
+    }
+
+    @Test func macosMenuBarIconCanOverrideHiddenMode() throws {
+        let regular = try TemporaryConfig("macos-menu-bar-icon = true")
+        let hidden = try TemporaryConfig("""
+            macos-hidden = always
+            macos-menu-bar-icon = false
+            """)
+        #expect(regular.macosMenuBarIcon)
+        #expect(!hidden.macosMenuBarIcon)
+    }
+
     @Test func maximizeDefaultsToFalse() throws {
         let config = try TemporaryConfig("")
         #expect(config.maximize == false)
