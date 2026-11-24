@@ -37,6 +37,11 @@ not hand-drawn UI mockups.
 - Preview the resulting diff.
 - Preserve comments and options the application does not yet understand.
 - Create a backup before writing changes.
+- Notify the hosting Ghostty process to reload after a successful save, when
+  the app host supplies `GHOSTTY_SETTINGS_RELOAD_PID`.
+- Undo the most recent successful save in the current editor session with
+  `ctrl+z`, provided the files have not changed externally and there are no
+  unsaved drafts. Undo restores the prior bytes and leaves `.bak` files intact.
 
 ## Run the editor
 
@@ -89,6 +94,10 @@ settings, `a` for all settings, and `/` for global search. Inside an option
 list, `enter` or `e` edits the selected option, `r` stages a default reset,
 `u` reverts a staged option, `p` previews, and `ctrl+s` saves. Press `q`, then
 `y`, to save and quit; `d` discards the staged changes and quits.
+After a successful save, use `ctrl+z` to undo it while the editor remains
+open. Undo checks that every changed file still contains the bytes written by
+that save; if any file changed externally, the editor reports the conflict and
+keeps the undo available for retry.
 
 Scalar options use reviewed controls: visible inherit/off/on toggles, numeric
 steppers, documented enum pickers, multi-select lists, duration/unit pickers,

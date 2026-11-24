@@ -39,11 +39,26 @@ type FileChange struct {
 // replaced. If a later replacement fails, already-replaced files are restored
 // from their captured originals.
 func SaveAll(changes []FileChange) error {
+	return applyAll(changes, true)
+}
+
+// RestoreAll restores a prior set of file contents only when every target
+// still matches the corresponding saved contents. It deliberately leaves
+// .bak files alone: those backups may predate the editor session.
+func RestoreAll(changes []FileChange) error {
+	return applyAll(changes, false)
+}
+
+func applyAll(changes []FileChange, writeBackup bool) error {
+	operation := "restore"
+	if writeBackup {
+		operation = "save"
+	}
 	prepared := make([]preparedChange, 0, len(changes))
 	seen := make(map[string]struct{}, len(changes))
 	for _, change := range changes {
 		if change.Path == "" {
-			return fmt.Errorf("config save path is empty")
+			return fmt.Errorf("config %s path is empty", operation)
 		}
 		if bytes.Equal(change.Original, change.Candidate) {
 			continue
@@ -57,21 +72,24 @@ func SaveAll(changes []FileChange) error {
 			identity = filepath.Clean(target)
 		}
 		if _, exists := seen[identity]; exists {
-			return fmt.Errorf("config save target appears more than once: %s", target)
+			return fmt.Errorf("config %s target appears more than once: %s", operation, target)
 		}
 		seen[identity] = struct{}{}
 		current, err := os.ReadFile(target)
 		if err != nil {
-			return fmt.Errorf("read config before save %q: %w", target, err)
+			return fmt.Errorf("read config before %s %q: %w", operation, target, err)
 		}
-		if SHA256(current) != SHA256(change.Original) {
+		if (writeBackup && SHA256(current) != SHA256(change.Original)) || (!writeBackup && !bytes.Equal(current, change.Original)) {
+			if !writeBackup {
+				return fmt.Errorf("config changed since the last save; refusing undo: %s", change.Path)
+			}
 			return fmt.Errorf("config changed while it was being edited: %s", change.Path)
 		}
 		prepared = append(prepared, preparedChange{
 			FileChange: change,
 			target:     target,
 			mode:       info.Mode().Perm(),
-			backup:     target + ".bak",
+			backup:     backupPath(target, writeBackup),
 		})
 	}
 	if len(prepared) == 0 {
@@ -85,11 +103,13 @@ func SaveAll(changes []FileChange) error {
 		}
 	}
 
-	for index := range prepared {
-		change := &prepared[index]
-		if err := writeAtomic(change.backup, change.Original, change.mode); err != nil {
-			cleanupTemps(prepared)
-			return fmt.Errorf("write backup %q: %w", change.backup, err)
+	if writeBackup {
+		for index := range prepared {
+			change := &prepared[index]
+			if err := writeAtomic(change.backup, change.Original, change.mode); err != nil {
+				cleanupTemps(prepared)
+				return fmt.Errorf("write backup %q: %w", change.backup, err)
+			}
 		}
 	}
 
@@ -100,9 +120,9 @@ func SaveAll(changes []FileChange) error {
 			rollbackErr := rollback(prepared[:replaced])
 			cleanupTemps(prepared)
 			if rollbackErr != nil {
-				return fmt.Errorf("replace %q: %w (rollback failed: %v)", change.target, err, rollbackErr)
+				return fmt.Errorf("%s %q: %w (rollback failed: %v)", operation, change.target, err, rollbackErr)
 			}
-			return fmt.Errorf("replace %q: %w", change.target, err)
+			return fmt.Errorf("%s %q: %w", operation, change.target, err)
 		}
 		change.temp = ""
 		replaced++
@@ -111,6 +131,13 @@ func SaveAll(changes []FileChange) error {
 		return err
 	}
 	return nil
+}
+
+func backupPath(target string, enabled bool) string {
+	if !enabled {
+		return ""
+	}
+	return target + ".bak"
 }
 
 type preparedChange struct {

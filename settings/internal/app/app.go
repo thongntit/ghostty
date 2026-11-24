@@ -88,6 +88,14 @@ func New(options Options) (Model, error) {
 		}
 		return storage.SaveAll(files)
 	})
+	ui.SetUndoFunc(func(changes []tui.FileSnapshot) error {
+		files := make([]storage.FileChange, len(changes))
+		for index, change := range changes {
+			files[index] = storage.FileChange{Path: change.Path, Original: change.Original, Candidate: change.Candidate}
+		}
+		return storage.RestoreAll(files)
+	})
+	ui.SetReloadFunc(hostReloadNotifier())
 	loadChoiceProviders(&ui)
 	ui.EnableAppearancePlayground()
 	ui.SetStatus(loadStatus)

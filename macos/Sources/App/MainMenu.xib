@@ -373,6 +373,12 @@
                                     <action selector="toggleQuickTerminal:" target="bbz-4X-AYv" id="qDV-sz-Agc"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Quick Terminal Setup…" id="ZtQ-8J-4ab">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="openQuickTerminalSetup:" target="bbz-4X-AYv" id="A9k-Sv-C56"/>
+                                </connections>
+                            </menuItem>
                             <menuItem isSeparatorItem="YES" id="bC9-n9-RbJ"/>
                             <menuItem title="Terminal Inspector" id="QwP-M5-fvh">
                                 <modifierMask key="keyEquivalentModifierMask"/>

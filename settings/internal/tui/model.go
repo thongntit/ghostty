@@ -73,6 +73,12 @@ type FileSnapshot struct {
 // the editor open and reports the failure in the status line.
 type SaveFunc func([]FileSnapshot) error
 
+// UndoFunc restores the previous bytes from the latest successful save.
+type UndoFunc func([]FileSnapshot) error
+
+// ReloadFunc notifies the hosting Ghostty process that saved settings changed.
+type ReloadFunc func() error
+
 type scalarEdit struct {
 	Path  string
 	Line  int
@@ -199,7 +205,10 @@ type Model struct {
 	pairColorChoice        bool
 	formActionChoice       bool
 
-	saveFunc SaveFunc
+	saveFunc   SaveFunc
+	undoFunc   UndoFunc
+	reloadFunc ReloadFunc
+	lastSave   []FileSnapshot
 
 	mode       Mode
 	returnMode Mode
@@ -283,6 +292,13 @@ func (m *Model) SetSaveFunc(save SaveFunc) {
 	m.saveFunc = save
 }
 
+// SetUndoFunc installs the guarded restore boundary used by undo-last-save.
+func (m *Model) SetUndoFunc(undo UndoFunc) { m.undoFunc = undo }
+
+// SetReloadFunc installs the optional host notification called after saves
+// and undo. A nil callback keeps standalone editor use independent of Ghostty.
+func (m *Model) SetReloadFunc(reload ReloadFunc) { m.reloadFunc = reload }
+
 // SetStatus sets startup or interaction feedback shown in the details panel.
 func (m *Model) SetStatus(status string) {
 	m.status = status
@@ -354,6 +370,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.resize()
 		return m, nil
 	}
+	if (m.mode == ModeBrowse || m.mode == ModePreview) && !m.searching && !m.themeSearching && msgKeyMatches(msg, defaultKeyMap.UndoSave) {
+		m.undoLastSave()
+		return m, nil
+	}
 
 	switch m.mode {
 	case ModeBrowse:
@@ -367,6 +387,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	default:
 		return m, nil
 	}
+}
+
+func msgKeyMatches(msg tea.Msg, binding key.Binding) bool {
+	keyMsg, ok := msg.(tea.KeyPressMsg)
+	return ok && key.Matches(keyMsg, binding)
 }
 
 func (m *Model) resize() {
@@ -1515,13 +1540,92 @@ func (m *Model) saveNow() {
 		m.status = "Save failed: " + err.Error()
 		return
 	}
+	m.lastSave = cloneSnapshots(snapshots)
 	m.markSaved()
 	if m.mode == ModePreview {
 		m.preview.SetContent(m.previewContent())
 		m.preview.GotoTop()
 	}
-	m.status = fmt.Sprintf("Saved %d config file(s)", len(snapshots))
+	m.status = m.withReloadStatus(fmt.Sprintf("Saved %d config file(s)", len(snapshots)))
 }
+
+func (m *Model) undoLastSave() {
+	if m.HasChanges() {
+		m.status = "Undo unavailable while there are unsaved changes"
+		return
+	}
+	if len(m.lastSave) == 0 {
+		m.status = "No successful save to undo in this session"
+		return
+	}
+	if m.undoFunc == nil {
+		m.status = "Undo is unavailable for this host"
+		return
+	}
+	changes := make([]FileSnapshot, len(m.lastSave))
+	for index, saved := range m.lastSave {
+		changes[index] = FileSnapshot{Path: saved.Path, Original: append([]byte(nil), saved.Candidate...), Candidate: append([]byte(nil), saved.Original...)}
+	}
+	if err := m.undoFunc(changes); err != nil {
+		m.status = "Undo failed: " + err.Error()
+		return
+	}
+	m.lastSave = nil
+	if m.graph == nil {
+		if len(changes) == 1 {
+			m.original = documentFromBytes(changes[0].Candidate)
+			m.draft = m.original.Clone()
+		}
+	} else {
+		documents := make(map[string]configdoc.Document, len(changes))
+		for _, change := range changes {
+			documents[change.Path] = *documentFromBytes(change.Candidate)
+		}
+		m.graph = ptrGraph(m.graph.WithDocuments(documents))
+		if refreshed, err := configgraph.Load(m.graph.Roots); err == nil {
+			m.graph = &refreshed
+		}
+		m.fileOriginals = make([]configdoc.Document, len(m.graph.Files))
+		m.fileDrafts = make([]configdoc.Document, len(m.graph.Files))
+		for index, file := range m.graph.Files {
+			m.fileOriginals[index] = *file.Document.Clone()
+			m.fileDrafts[index] = *file.Document.Clone()
+		}
+		m.selectedFile = fileIndex(m.graph.Files, m.configPath)
+		m.staged = make(map[string]stagedOption)
+		m.syncLegacyDocuments()
+	}
+	if m.mode == ModePreview {
+		m.preview.SetContent(m.previewContent())
+		m.preview.GotoTop()
+	}
+	m.status = m.withReloadStatus(fmt.Sprintf("Undid last save for %d config file(s)", len(changes)))
+}
+
+func (m *Model) withReloadStatus(status string) string {
+	if m.reloadFunc == nil {
+		return status
+	}
+	if err := m.reloadFunc(); err != nil {
+		return status + "; Ghostty reload notification unavailable: " + err.Error()
+	}
+	return status + "; Ghostty notified to reload settings"
+}
+
+func cloneSnapshots(snapshots []FileSnapshot) []FileSnapshot {
+	cloned := make([]FileSnapshot, len(snapshots))
+	for index, snapshot := range snapshots {
+		cloned[index] = FileSnapshot{Path: snapshot.Path, Original: append([]byte(nil), snapshot.Original...), Candidate: append([]byte(nil), snapshot.Candidate...)}
+	}
+	return cloned
+}
+
+func documentFromBytes(contents []byte) *configdoc.Document {
+	document := configdoc.Parse(contents)
+	return &document
+}
+
+func ptrGraph(graph configgraph.Graph) *configgraph.Graph { return &graph }
 
 func (m *Model) markSaved() {
 	m.staged = make(map[string]stagedOption)

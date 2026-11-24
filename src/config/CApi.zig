@@ -121,6 +121,31 @@ fn config_trigger_(
     return trigger.cval();
 }
 
+export fn ghostty_config_global_trigger(
+    self: *Config,
+    str: [*]const u8,
+    len: usize,
+) inputpkg.Binding.Trigger.C {
+    const action = inputpkg.Binding.Action.parse(str[0..len]) catch return .{};
+    const trigger = globalTrigger(self, action) orelse return .{};
+    return trigger.cval();
+}
+
+fn globalTrigger(self: *const Config, action: inputpkg.Binding.Action) ?inputpkg.Binding.Trigger {
+    var it = self.keybind.set.bindings.iterator();
+    while (it.next()) |entry| switch (entry.value_ptr.*) {
+        .leader => {},
+        inline .leaf, .leaf_chained => |binding| {
+            if (!binding.flags.global) continue;
+            const leaf = binding.generic();
+            for (leaf.actionsSlice()) |bound| {
+                if (bound.equal(action)) return entry.key_ptr.*;
+            }
+        },
+    };
+    return null;
+}
+
 export fn ghostty_config_diagnostics_count(self: *Config) u32 {
     return @intCast(self._diagnostics.items().len);
 }
@@ -277,4 +302,24 @@ test "ghostty_config_trigger: default keybind" {
         try testing.expectEqual(.physical, trigger.tag);
         try testing.expectEqual(.unidentified, trigger.key.physical);
     }
+}
+
+test "ghostty_config_global_trigger: filters scope and includes chained actions" {
+    const testing = std.testing;
+    var cfg = try Config.default(testing.allocator);
+    defer cfg.deinit();
+    const alloc = cfg.arenaAlloc();
+    const action: inputpkg.Binding.Action = .toggle_quick_terminal;
+    const action_name = "toggle_quick_terminal";
+
+    try cfg.keybind.parseCLI(alloc, "clear");
+    try cfg.keybind.parseCLI(alloc, "ctrl+space=toggle_quick_terminal");
+    try cfg.keybind.parseCLI(alloc, "global:ctrl+a=new_window");
+    try testing.expect(globalTrigger(&cfg, action) == null);
+    try testing.expectEqual(.unidentified, ghostty_config_global_trigger(&cfg, action_name, action_name.len).key.physical);
+
+    try cfg.keybind.parseCLI(alloc, "global:ctrl+b=new_window");
+    try cfg.keybind.parseCLI(alloc, "chain=toggle_quick_terminal");
+    const expected = try inputpkg.Binding.Trigger.parse("ctrl+b");
+    try testing.expect(expected.equal(globalTrigger(&cfg, action).?));
 }
